@@ -1,16 +1,28 @@
 use std::io;
+use std::io::Write;
 
 const BASE_URL: &str = "https://www.toptal.com/developers/gitignore/api/";
 
 fn main() {
-    // Make a pretty banner for the program
     println!("---------------------------------------------------------");
     println!("--                                                     --");
     println!("--   gig => .gitignore generator using Rust + Toptal   --");
     println!("--                                                     --");
     println!("---------------------------------------------------------");
 
-    // Ask the user for the .gitignore terms.
+    let terms = prompt_user_for_terms();
+    let url = format!("{}{}", BASE_URL, terms);
+    let body = fetch_gitignore_body(&url);
+
+    save_gitignore_file(&body.unwrap());
+
+    println!();
+    println!("Finished! .gitignore file saved in directory: {}", std::env::current_dir().unwrap().display());
+
+    std::process::exit(0);
+}
+
+fn prompt_user_for_terms() -> String {
     let mut terms = String::new();
     println!();
     println!("Please enter each .gitignore term seperated by a space:");
@@ -20,22 +32,24 @@ fn main() {
         .read_line(&mut terms)
         .expect("Failed to read line");
 
-    // Check that the user entered some terms
     if terms.trim().is_empty() {
         println!("You must enter at least one term.");
-        return;
+        return "".to_string();
     }
 
-    // Replace each space with a comma.
-    terms = terms.replace(" ", ",");
+    terms.replace(" ", ",")
+}
 
-    // Create a new url from the base url and the terms.
-    let url = format!("{}{}", BASE_URL, terms);
+fn fetch_gitignore_body(url: &str) -> Result<String, ureq::Error> {
+    let body: String = ureq::get(url)
+        .set("Example-Header", "header value")
+        .call()?
+        .into_string()?;
 
-    // Print the url
-    println!("URL: {}", url);
+    Ok(body)
+}
 
-    // Make the API call to Toptal, previously, the web scraping worked nicely.
-
-    // Save the .gitignore file to the current directory (this should be a project root folder).
+fn save_gitignore_file(body: &str) {
+    let mut file = std::fs::File::create(".gitignore").expect("Unable to create file");
+    file.write_all(body.as_bytes()).expect("Unable to write data");
 }
